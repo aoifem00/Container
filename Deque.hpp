@@ -6,8 +6,10 @@ struct Iter{
   unsigned long address;
 }
 
-//#define deque_DEFINE(MyClassPtr)
 
-void deque_define(int* MyClassPtr){
-
-}
+#define Deque_DEFINE(var)
+    struct Deque_##var{
+      void (*push_front)(var);
+      void (*push_back)(var);
+    };
+    

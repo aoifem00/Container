@@ -16,6 +16,7 @@
       t* data=new t[10];                                                       \
       const char* type_name=(const char*)malloc(sizeof(t&));                   \
       size_t sz=0;                                                             \
+      int tail=-1;                                                             \
       void (*push_front)(Deque_##t*, t);                                       \
       void (*push_back)(Deque_##t*, t);                                        \
       void (*dtor)(Deque_##t*);                                                \
@@ -61,16 +62,40 @@
     void Deque_##t##_dtor(Deque_##t *p){                                       \
     }                                                                          \
     t& Deque_##t##_front(Deque_##t *p){                                        \
-      return *(p->data);                                                       \
+      return p->data[0];                                                       \
     }                                                                          \
     t& Deque_##t##_back(Deque_##t *p){                                         \
-      return *(p->data+p->sz);                                                 \
+      return p->data[p->tail];                                                 \
     }                                                                          \
     void Deque_##t##_pop_front(Deque_##t *p){                                  \
     }                                                                          \
     void Deque_##t##_pop_back(Deque_##t *p){                                   \
     }                                                                          \
     void Deque_##t##_push_back(Deque_##t *p, t item){                          \
+      p->tail++;                                                               \
+      if(p->tail==sizeof(p->data)){                                            \
+        p->tail-=1;                                                            \
+        for(int i=sizeof(p->data)-1; i>0; i--) p->data[i-1]=p->data[i];        \
+        p->data[p->tail]=item;                                                 \
+      }                                                                        \
+      else{                                                                    \
+        p->data[p->tail]=item;                                                 \
+      }                                                                        \
+    }                                                                          \
+    void Deque_##t##_push_front(Deque_##t *p, t item){                         \
+      t* tmp=new t();                                                          \
+      if(memcmp(&p->data[0], tmp, sizeof(p->data[0]))==0) p->data[0]=item;     \
+      else{                                                                    \
+        int i=0;                                                               \
+        while(memcmp(&p->data[i], tmp, sizeof(p->data[i]))!=0&&i<10){          \
+          i++;                                                                 \
+        }                                                                      \
+        int start=sizeof(p->data)/sizeof(p->data[0])-1;                        \
+        for(int j=5; j>=0; j--) p->data[j]=p->data[j-1];                       \
+        p->data[0]=item;                                                       \
+      }                                                                        \
+      delete tmp;                                                              \
+      p->tail++;                                                               \
     }                                                                          \
     /*size_t& Deque_##t##_size(Deque_##t *p){                                  \
       size_t* n=(size_t*)malloc(sizeof(size_t));                               \
@@ -83,7 +108,9 @@
     void Deque_##t##_clear(Deque_##t *p){                                      \
     }                                                                          \
     bool Deque_##t##_empty(Deque_##t *p){                                      \
-      return true;                                                             \
+      t* tmp=new t();                                                          \
+      int c=memcmp(&p->data[0], tmp, sizeof(p->data[0]));                      \
+      return p->tail==-1 && c==0;                                              \
     }                                                                          \
     /*Deque_##t* Deque_##t_##_new(){                                           \
       Deque_##t* deque=(Deque_##t*)malloc(sizeof(Deque_##t));                  \
@@ -106,6 +133,7 @@
       d.size=&Deque_##t##_size;                                                \
       d.empty=&Deque_##t##_empty;                                              \
       d.push_back=&Deque_##t##_push_back;                                      \
+      d.push_front=&Deque_##t##_push_front;                                    \
       d.sz=0;                                                                  \
       *deq=d;                                                                  \
     }                                                                          \

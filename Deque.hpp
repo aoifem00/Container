@@ -16,6 +16,7 @@
       void (*inc)(Deque_##t##_Iterator* it);                                   \
       void (*dec)(Deque_##t##_Iterator* it);                                   \
       t& (*deref)(Deque_##t##_Iterator*);                                      \
+      bool (*equal)(Deque_##t##_Iterator, Deque_##t##_Iterator);               \
     };                                                                         \
                                                                                \
     struct Deque_##t {                                                         \
@@ -44,13 +45,23 @@
       bool (*compare)(const t&, const t&);                                     \
     };                                                                         \
     bool Deque_##t##_Iterator_equal(Deque_##t##_Iterator it1, Deque_##t##_Iterator it2){ \
-      return true;                                                             \
+      if(memcmp(it1.pointer, it2.pointer, sizeof(it1.pointer))==0) return true;\
+      return false;                                                            \
     }                                                                          \
     t& Deque_##t##_Iterator_deref(Deque_##t##_Iterator* it){                   \
       return *(it->pointer);                                                   \
     }                                                                          \
     void Deque_##t##_Iterator_inc(Deque_##t##_Iterator* it){                   \
-      it=it+sizeof(it->type);                                                  \
+      if(it->index==it->deque->tail+1){                                        \
+        it->index=it->deque->head;                                             \
+      }                                                                        \
+      else if(it->index==9){                                                   \
+        it->index=0;                                                           \
+      }                                                                        \
+      else{                                                                    \
+        it->index=it->index+1;                                                 \
+      }                                                                        \
+      it->pointer=&it->deque->data[it->index];                                 \
     }                                                                          \
     void Deque_##t##_Iterator_dec(Deque_##t##_Iterator* it){                   \
       if(it->index==it->deque->head){                                          \
@@ -74,19 +85,20 @@
       iter->dec=Deque_##t##_Iterator_dec;                                      \
       iter->deref=Deque_##t##_Iterator_deref;                                  \
       iter->deque=new Deque_##t();                                             \
+      iter->equal=Deque_##t##_Iterator_equal;                                  \
       return iter;                                                             \
     }                                                                          \
     Deque_##t##_Iterator& Deque_##t##_Iterator_begin(Deque_##t *p){            \
       Deque_##t##_Iterator* iter=Deque_##t##_Iterator_new();                   \
       iter->index=p->head;                                                     \
-      *(iter->deque)=*p;                                                       \
+      iter->deque=p;                                                           \
       *(iter->pointer)=p->data[p->head];                                       \
       return *iter;                                                            \
     }                                                                          \
     Deque_##t##_Iterator& Deque_##t##_Iterator_end(Deque_##t *p){              \
       Deque_##t##_Iterator* iter=Deque_##t##_Iterator_new();                   \
-      iter->pointer=&p->data[p->iterTail];                                     \
-      iter->index=p->iterTail;                                                     \
+      iter->pointer=&p->data[p->tail+1];                                       \
+      iter->index=p->tail+1;                                                   \
       *(iter->deque)=*p;                                                       \
       return (*iter);                                                          \
     }                                                                          \
@@ -197,8 +209,8 @@
       if(deq1.sz!=deq2.sz) return false;                                       \
       if(deq1.head>deq1.tail){                                                 \
         for(int i=deq1.head; i<10; i++){                                       \
-          if(deq1.compare(deq1.data[i], deq2.data[i])==true                  \
-          || deq1.compare(deq2.data[i], deq1.data[i])==true) return false;  \
+          if(deq1.compare(deq1.data[i], deq2.data[i])==true                    \
+          || deq1.compare(deq2.data[i], deq1.data[i])==true) return false;     \
         }                                                                      \
         for(int i=0; i<deq1.tail; i++){                                        \
           if(deq1.compare(deq1.data[i], deq2.data[i])==true                  \
@@ -207,7 +219,6 @@
       }                                                                      \
       else{                                                                  \
         for(int i=deq1.head; i<=deq1.tail; i++){                              \
-          printf("%d\n", deq1.compare(deq1.data[i], deq2.data[i]));              \
           if(deq1.compare(deq1.data[i], deq2.data[i])==true                  \
           || deq1.compare(deq2.data[i], deq1.data[i])==true) return false;  \
         }                                                                    \

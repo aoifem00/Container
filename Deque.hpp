@@ -76,7 +76,7 @@
     t& Deque_##t##_at(Deque_##t *p, int i){                                    \
       return p->data[(p->head+i)%10];                                          \
     }                                                                          \
-    void sort(Deque_##t *deq, Deque_##t##_Iterator it1, Deque_##t##_Iterator it2){ \
+    void Deque_##t##_sort(Deque_##t *deq, Deque_##t##_Iterator it1, Deque_##t##_Iterator it2){ \
     }                                                                          \
     Deque_##t##_Iterator* Deque_##t##_Iterator_new(){                          \
       Deque_##t##_Iterator* iter=(Deque_##t##_Iterator*) malloc(sizeof(Deque_##t##_Iterator)); \
@@ -127,7 +127,8 @@
     void Deque_##t##_pop_back(Deque_##t *p){                                   \
       t* tmp=new t();                                                          \
       memcpy(tmp, &p->data[p->tail], sizeof(tmp));                             \
-      p->tail--;                                                               \
+      if(p->tail==0) p->tail=9;                                                \
+      else p->tail--;                                                          \
       p->sz=p->sz-1;                                                           \
     }                                                                          \
     void Deque_##t##_push_back(Deque_##t *p, t item){                          \
@@ -177,7 +178,7 @@
       }                                                                        \
       delete tmp;                                                              \
       p->tail++;                                                               \
-    }*/                                                                          \
+    }*/                                                                        \
     /*size_t& Deque_##t##_size(Deque_##t *p){                                  \
       size_t* n=(size_t*)malloc(sizeof(size_t));                               \
       *n=0;                                                                    \
@@ -191,7 +192,7 @@
     bool Deque_##t##_empty(Deque_##t *p){                                      \
       t* tmp=new t();                                                          \
       int c=memcmp(&p->data[0], tmp, sizeof(p->data[0]));                      \
-      return p->tail==0 && c==0;                                              \
+      return p->tail==0 && c==0;                                               \
     }                                                                          \
     /*Deque_##t* Deque_##t_##_new(){                                           \
       Deque_##t* deque=(Deque_##t*)malloc(sizeof(Deque_##t));                  \
@@ -213,16 +214,16 @@
           || deq1.compare(deq2.data[i], deq1.data[i])==true) return false;     \
         }                                                                      \
         for(int i=0; i<deq1.tail; i++){                                        \
-          if(deq1.compare(deq1.data[i], deq2.data[i])==true                  \
-          || deq1.compare(deq2.data[i], deq1.data[i])==true) return false;  \
+          if(deq1.compare(deq1.data[i], deq2.data[i])==true                    \
+          || deq1.compare(deq2.data[i], deq1.data[i])==true) return false;     \
         }                                                                      \
-      }                                                                      \
-      else{                                                                  \
-        for(int i=deq1.head; i<=deq1.tail; i++){                              \
-          if(deq1.compare(deq1.data[i], deq2.data[i])==true                  \
-          || deq1.compare(deq2.data[i], deq1.data[i])==true) return false;  \
-        }                                                                    \
-      }                                                                      \
+      }                                                                        \
+      else{                                                                    \
+        for(int i=deq1.head; i<=deq1.tail; i++){                               \
+          if(deq1.compare(deq1.data[i], deq2.data[i])==true                    \
+          || deq1.compare(deq2.data[i], deq1.data[i])==true) return false;     \
+        }                                                                      \
+      }                                                                        \
       return true;                                                             \
     }                                                                          \
     void Deque_##t##_ctor(Deque_##t *deq, bool (*comp)(const t&, const t&)){   \
@@ -241,6 +242,7 @@
       d.pop_back=&Deque_##t##_pop_back;                                        \
       d.clear=&Deque_##t##_clear;                                              \
       d.dtor=&Deque_##t##_dtor;                                                \
+      d.sort=&Deque_##t##_sort;                                                \
       d.sz=0;                                                                  \
       d.compare=comp;                                                          \
       d.equal=&Deque_##t##_equal;                                              \

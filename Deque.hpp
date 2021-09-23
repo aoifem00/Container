@@ -4,20 +4,28 @@
 #include <string.h>
 
 #define Deque_DEFINE(t)                                                        \
+    struct Deque_##t##_Iterator;                                               \
+    struct Deque_##t;                                                          \
+                                                                               \
     struct Deque_##t##_Iterator {                                              \
+      int index;                                                               \
       t type;                                                                  \
       t* pointer;                                                              \
       t& reference;                                                            \
+      Deque_##t *deque;                                                        \
       void (*inc)(Deque_##t##_Iterator* it);                                   \
       void (*dec)(Deque_##t##_Iterator* it);                                   \
       t& (*deref)(Deque_##t##_Iterator*);                                      \
     };                                                                         \
+                                                                               \
     struct Deque_##t {                                                         \
       t* data=new t[10];                                                       \
       const char* type_name=(const char*)malloc(sizeof(t&));                   \
       size_t sz=0;                                                             \
       int head=0;                                                              \
       int tail=0;                                                              \
+      int iterHead=0;                                                          \
+      int iterTail=0;                                                          \
       void (*push_front)(Deque_##t*, t);                                       \
       void (*push_back)(Deque_##t*, t);                                        \
       void (*dtor)(Deque_##t*);                                                \
@@ -30,9 +38,10 @@
       void (*clear)(Deque_##t*);                                               \
       bool (*empty)(Deque_##t*);                                               \
       Deque_##t##_Iterator& (*begin)(Deque_##t *deq);                          \
-      bool (*Deque_##t##_equal)(t item1, t item2);                             \
+      bool (*equal)(Deque_##t, Deque_##t);                                     \
       void (*sort)(Deque_##t *, Deque_##t##_Iterator, Deque_##t##_Iterator);   \
       Deque_##t##_Iterator& (*end)(Deque_##t *deq);                            \
+      bool (*compare)(const t&, const t&);                                     \
     };                                                                         \
     bool Deque_##t##_Iterator_equal(Deque_##t##_Iterator it1, Deque_##t##_Iterator it2){ \
       return true;                                                             \
@@ -44,7 +53,14 @@
       it=it+sizeof(it->type);                                                  \
     }                                                                          \
     void Deque_##t##_Iterator_dec(Deque_##t##_Iterator* it){                   \
-      it=it-sizeof(it->type);                                                  \
+      if(it->index==it->deque->head){                                          \
+        it->index=it->deque->tail;                                             \
+        it->pointer=&it->deque->data[it->deque->tail];                         \
+      }                                                                        \
+      else{                                                                    \
+        it->index=it->index-1;                                                 \
+        it->pointer=&it->deque->data[it->index];                               \
+      }                                                                        \
     }                                                                          \
     t& Deque_##t##_at(Deque_##t *p, int i){                                    \
       return p->data[(p->head+i)%10];                                          \
@@ -57,16 +73,21 @@
       iter->inc=Deque_##t##_Iterator_inc;                                      \
       iter->dec=Deque_##t##_Iterator_dec;                                      \
       iter->deref=Deque_##t##_Iterator_deref;                                  \
+      iter->deque=new Deque_##t();                                             \
       return iter;                                                             \
     }                                                                          \
     Deque_##t##_Iterator& Deque_##t##_Iterator_begin(Deque_##t *p){            \
       Deque_##t##_Iterator* iter=Deque_##t##_Iterator_new();                   \
+      iter->index=p->head;                                                     \
+      *(iter->deque)=*p;                                                       \
       *(iter->pointer)=p->data[p->head];                                       \
       return *iter;                                                            \
     }                                                                          \
     Deque_##t##_Iterator& Deque_##t##_Iterator_end(Deque_##t *p){              \
       Deque_##t##_Iterator* iter=Deque_##t##_Iterator_new();                   \
-      iter->pointer=&p->data[p->tail];                                         \
+      iter->pointer=&p->data[p->iterTail];                                     \
+      iter->index=p->iterTail;                                                     \
+      *(iter->deque)=*p;                                                       \
       return (*iter);                                                          \
     }                                                                          \
     void Deque_##t##_dtor(Deque_##t *p){                                       \
@@ -89,11 +110,13 @@
       t* tmp=new t();                                                          \
       memcpy(tmp, &p->data[p->head], sizeof(tmp));                             \
       p->head=(p->head+1)%10;                                                  \
+      p->sz=p->sz-1;                                                           \
     }                                                                          \
     void Deque_##t##_pop_back(Deque_##t *p){                                   \
       t* tmp=new t();                                                          \
       memcpy(tmp, &p->data[p->tail], sizeof(tmp));                             \
       p->tail--;                                                               \
+      p->sz=p->sz-1;                                                           \
     }                                                                          \
     void Deque_##t##_push_back(Deque_##t *p, t item){                          \
       t* tmp=new t();                                                          \
@@ -103,6 +126,8 @@
         else p->tail++;                                                        \
         p->data[p->tail]=item;                                                 \
       }                                                                        \
+      p->sz=p->sz+1;                                                           \
+      p->iterTail=p->tail;                                                     \
     }                                                                          \
     /*void Deque_##t##_push_back(Deque_##t *p, t item){                        \
       p->tail++;                                                               \
@@ -123,6 +148,8 @@
         else p->head--;                                                        \
         p->data[p->head]=item;                                                 \
       }                                                                        \
+      p->sz=p->sz+1;                                                           \
+      p->iterHead=p->head;                                                     \
     }                                                                          \
     /*void Deque_##t##_push_front(Deque_##t *p, t item){                       \
       t* tmp=new t();                                                          \
@@ -166,7 +193,28 @@
       deque->sz=0;                                                             \
       return deque;                                                            \
     }*/                                                                        \
-    void Deque_##t##_ctor(Deque_##t *deq, bool b){                             \
+    bool Deque_##t##_equal(Deque_##t deq1, Deque_##t deq2){                    \
+      if(deq1.sz!=deq2.sz) return false;                                       \
+      if(deq1.head>deq1.tail){                                                 \
+        for(int i=deq1.head; i<10; i++){                                       \
+          if(deq1.compare(deq1.data[i], deq2.data[i])==true                  \
+          || deq1.compare(deq2.data[i], deq1.data[i])==true) return false;  \
+        }                                                                      \
+        for(int i=0; i<deq1.tail; i++){                                        \
+          if(deq1.compare(deq1.data[i], deq2.data[i])==true                  \
+          || deq1.compare(deq2.data[i], deq1.data[i])==true) return false;  \
+        }                                                                      \
+      }                                                                      \
+      else{                                                                  \
+        for(int i=deq1.head; i<=deq1.tail; i++){                              \
+          printf("%d\n", deq1.compare(deq1.data[i], deq2.data[i]));              \
+          if(deq1.compare(deq1.data[i], deq2.data[i])==true                  \
+          || deq1.compare(deq2.data[i], deq1.data[i])==true) return false;  \
+        }                                                                    \
+      }                                                                      \
+      return true;                                                             \
+    }                                                                          \
+    void Deque_##t##_ctor(Deque_##t *deq, bool (*comp)(const t&, const t&)){   \
       Deque_##t d;                                                             \
       d.type_name=typeid(deq).name();                                          \
       d.front=&Deque_##t##_front;                                              \
@@ -178,9 +226,12 @@
       d.push_front=&Deque_##t##_push_front;                                    \
       d.begin=&Deque_##t##_Iterator_begin;                                     \
       d.end=&Deque_##t##_Iterator_end;                                         \
+      d.pop_front=&Deque_##t##_pop_front;                                      \
+      d.pop_back=&Deque_##t##_pop_back;                                        \
+      d.clear=&Deque_##t##_clear;                                              \
+      d.dtor=&Deque_##t##_dtor;                                                \
       d.sz=0;                                                                  \
+      d.compare=comp;                                                          \
+      d.equal=&Deque_##t##_equal;                                              \
       *deq=d;                                                                  \
-    }                                                                          \
-    bool Deque_##t##_equal(Deque_##t deq1, Deque_##t deq2){                    \
-      return true;                                                             \
     }                                                                          \

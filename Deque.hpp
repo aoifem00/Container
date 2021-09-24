@@ -21,7 +21,7 @@
                                                                                \
     struct Deque_##t {                                                         \
       t* data=new t[10];                                                       \
-      const char* type_name=(const char*)malloc(sizeof(t&));                   \
+      char type_name[sizeof("Deque_"#t)] = "Deque_"#t;                         \
       size_t sz=0;                                                             \
       int head=0;                                                              \
       int tail=0;                                                              \
@@ -76,7 +76,29 @@
     t& Deque_##t##_at(Deque_##t *p, int i){                                    \
       return p->data[(p->head+i)%10];                                          \
     }                                                                          \
+    void swap(t* t1, t* t2){                                                   \
+      t tmp=*t1;                                                               \
+      *t1=*t2;                                                                 \
+      *t2=tmp;                                                                 \
+    }                                                                          \
     void Deque_##t##_sort(Deque_##t *deq, Deque_##t##_Iterator it1, Deque_##t##_Iterator it2){ \
+      if(it1.index==it2.index) return;                                      \
+      else if(it2.index<it1.index){                                            \
+        for(int i=it1.index; i<it2.index+9; i++){                           \
+          for(int j=it1.index; j<it2.index+9-i; j++){                       \
+            if(deq->compare(deq->data[j], deq->data[j+1])==0)                  \
+            swap(&deq->data[j], &deq->data[j+1]);                              \
+          }                                                                    \
+        }                                                                      \
+      }                                                                        \
+      else{                                                                    \
+        for(int i=it1.index; i<it2.index-1; i++){                              \
+          for(int j=it1.index; j<it2.index-i-1; j++){                          \
+            if(deq->compare(deq->data[j], deq->data[j+1])==0)                  \
+            swap(&deq->data[j], &deq->data[j+1]);                              \
+          }                                                                    \
+        }                                                                      \
+      }                                                                        \
     }                                                                          \
     Deque_##t##_Iterator* Deque_##t##_Iterator_new(){                          \
       Deque_##t##_Iterator* iter=(Deque_##t##_Iterator*) malloc(sizeof(Deque_##t##_Iterator)); \
@@ -142,17 +164,6 @@
       p->sz=p->sz+1;                                                           \
       p->iterTail=p->tail;                                                     \
     }                                                                          \
-    /*void Deque_##t##_push_back(Deque_##t *p, t item){                        \
-      p->tail++;                                                               \
-      if(p->tail==sizeof(p->data)){                                            \
-        p->tail-=1;                                                            \
-        for(int i=sizeof(p->data)-1; i>0; i--) p->data[i-1]=p->data[i];        \
-        p->data[p->tail]=item;                                                 \
-      }                                                                        \
-      else{                                                                    \
-        p->data[p->tail]=item;                                                 \
-      }                                                                        \
-    }*/                                                                        \
     void Deque_##t##_push_front(Deque_##t *p, t item){                         \
       t* tmp=new t();                                                          \
       if(memcmp(tmp, &p->data[p->head], sizeof(tmp))==0) p->data[p->head]=item;\
@@ -164,26 +175,6 @@
       p->sz=p->sz+1;                                                           \
       p->iterHead=p->head;                                                     \
     }                                                                          \
-    /*void Deque_##t##_push_front(Deque_##t *p, t item){                       \
-      t* tmp=new t();                                                          \
-      if(memcmp(&p->data[0], tmp, sizeof(p->data[0]))==0) p->data[0]=item;     \
-      else{                                                                    \
-        int i=0;                                                               \
-        while(memcmp(&p->data[i], tmp, sizeof(p->data[i]))!=0&&i<10){          \
-          i++;                                                                 \
-        }                                                                      \
-        int start=sizeof(p->data)/sizeof(p->data[0])-1;                        \
-        for(int j=5; j>=0; j--) p->data[j]=p->data[j-1];                       \
-        p->data[0]=item;                                                       \
-      }                                                                        \
-      delete tmp;                                                              \
-      p->tail++;                                                               \
-    }*/                                                                        \
-    /*size_t& Deque_##t##_size(Deque_##t *p){                                  \
-      size_t* n=(size_t*)malloc(sizeof(size_t));                               \
-      *n=0;                                                                    \
-      return *n;                                                               \
-    }*/                                                                        \
     size_t Deque_##t##_size(Deque_##t *p){                                     \
       return p->sz;                                                            \
     }                                                                          \
@@ -194,18 +185,6 @@
       int c=memcmp(&p->data[0], tmp, sizeof(p->data[0]));                      \
       return p->tail==0 && c==0;                                               \
     }                                                                          \
-    /*Deque_##t* Deque_##t_##_new(){                                           \
-      Deque_##t* deque=(Deque_##t*)malloc(sizeof(Deque_##t));                  \
-      deque->data=(t*)malloc(sizeof(1024));                                    \
-      deque->front=&Deque_##t##_front;                                         \
-      deque->back=&Deque_##t##_back;                                           \
-      deque->at=&Deque_##t##_at;                                               \
-      deque->size=&Deque_##t##_size;                                           \
-      deque->empty=&Deque_##t##_empty;                                         \
-      deque->push_back=&Deque_##t##_push_back;                                 \
-      deque->sz=0;                                                             \
-      return deque;                                                            \
-    }*/                                                                        \
     bool Deque_##t##_equal(Deque_##t deq1, Deque_##t deq2){                    \
       if(deq1.sz!=deq2.sz) return false;                                       \
       if(deq1.head>deq1.tail){                                                 \
@@ -228,7 +207,6 @@
     }                                                                          \
     void Deque_##t##_ctor(Deque_##t *deq, bool (*comp)(const t&, const t&)){   \
       Deque_##t d;                                                             \
-      d.type_name=typeid(deq).name();                                          \
       d.front=&Deque_##t##_front;                                              \
       d.back=&Deque_##t##_back;                                                \
       d.at=&Deque_##t##_at;                                                    \
